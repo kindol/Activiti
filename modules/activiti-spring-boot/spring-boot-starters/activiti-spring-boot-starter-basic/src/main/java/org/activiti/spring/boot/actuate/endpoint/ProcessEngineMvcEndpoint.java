@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +20,6 @@ import org.activiti.engine.RepositoryService;
 import org.activiti.engine.repository.ProcessDefinition;
 import org.activiti.image.ProcessDiagramGenerator;
 import org.activiti.image.impl.DefaultProcessDiagramGenerator;
-import org.springframework.boot.actuate.endpoint.mvc.EndpointMvcAdapter;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -32,18 +31,19 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
  * Renders a valid running BPMN process definition as a BPMN diagram.
- *
+ * <p>
  * This is duplicative of the functionality in the full REST API implementation.
  *
  * @author Joram Barrez
  * @author Josh Long
  */
-public class ProcessEngineMvcEndpoint extends EndpointMvcAdapter {
+public class ProcessEngineMvcEndpoint {
 
     private final RepositoryService repositoryService;
+    private final ProcessEngineEndpoint processEngineEndpoint;
 
     public ProcessEngineMvcEndpoint(ProcessEngineEndpoint processEngineEndpoint, RepositoryService repositoryService) {
-        super(processEngineEndpoint);
+        this.processEngineEndpoint = processEngineEndpoint;
         this.repositoryService = repositoryService;
     }
 
@@ -55,24 +55,24 @@ public class ProcessEngineMvcEndpoint extends EndpointMvcAdapter {
     @RequestMapping(value = "/processes/{processDefinitionKey:.*}", method = RequestMethod.GET, produces = MediaType.IMAGE_JPEG_VALUE)
     @ResponseBody
     public ResponseEntity processDefinitionDiagram(@PathVariable String processDefinitionKey) {
-      ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
-              .processDefinitionKey(processDefinitionKey)
-              .latestVersion()
-              .singleResult();
-      if (processDefinition == null) {
-          return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-      }
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(processDefinitionKey)
+                .latestVersion()
+                .singleResult();
+        if (processDefinition == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
 
-      ProcessDiagramGenerator processDiagramGenerator = new DefaultProcessDiagramGenerator();
-      BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinition.getId());
+        ProcessDiagramGenerator processDiagramGenerator = new DefaultProcessDiagramGenerator();
+        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinition.getId());
 
-      if (bpmnModel.getLocationMap().size() == 0) {
-          BpmnAutoLayout autoLayout = new BpmnAutoLayout(bpmnModel);
-          autoLayout.execute();
-      }
+        if (bpmnModel.getLocationMap().size() == 0) {
+            BpmnAutoLayout autoLayout = new BpmnAutoLayout(bpmnModel);
+            autoLayout.execute();
+        }
 
-      InputStream is = processDiagramGenerator.generateJpgDiagram(bpmnModel);
-      return ResponseEntity.ok(new InputStreamResource(is));
-  }
+        InputStream is = processDiagramGenerator.generateJpgDiagram(bpmnModel);
+        return ResponseEntity.ok(new InputStreamResource(is));
+    }
 
 }
